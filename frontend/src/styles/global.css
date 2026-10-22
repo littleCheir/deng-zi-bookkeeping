@@ -1,0 +1,66 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+/* 页面通用容器 */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.muted {
+  color: var(--color-text-secondary);
+}
+
+/* 空状态：不使用假数据填充 */
+.empty-state {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
