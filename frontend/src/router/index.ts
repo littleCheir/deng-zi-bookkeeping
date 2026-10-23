@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
+import CategoriesView from '@/views/CategoriesView.vue'
+import TransactionsView from '@/views/TransactionsView.vue'
 import PlaceholderView from '@/views/PlaceholderView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -26,13 +28,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'transactions',
         name: 'transactions',
-        component: PlaceholderView,
+        component: TransactionsView,
         meta: { title: '账单', requiresAuth: true }
       },
       {
         path: 'categories',
         name: 'categories',
-        component: PlaceholderView,
+        component: CategoriesView,
         meta: { title: '分类管理', requiresAuth: true }
       }
     ]

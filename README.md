@@ -3,8 +3,8 @@
 个人使用的轻量级记账网站：手机浏览器优先，记录收入/支出，首页查看收支汇总与图表。
 V1 只初始化一个所有者账号，不开放注册；数据模型从一开始按“每条业务数据归属一个用户”设计。
 
-> 当前进度：**阶段 1 —— 用户认证与访问控制（已验收 2026-10-23）**。
-> 阶段 2–5 尚未实现。
+> 当前进度：**阶段 3 —— 账单记录 CRUD（已验收 2026-10-23）**。
+> 阶段 4–5 尚未实现。
 
 ## 目录结构
 
@@ -44,8 +44,9 @@ CREATE DATABASE expense_tracker
 - `V2__create_category.sql`
 - `V3__create_transaction_record.sql`
 - `V4__seed_default_categories.sql`（3 个默认分类：支出「餐饮」「其他」，收入「工资」）
+- `V5__category_management_indexes.sql`（分类查询索引与个人分类唯一索引）
 
-已执行过的迁移文件不要再修改，需要变更时新增版本（例如 `V5__...`）。
+已执行过的迁移文件不要再修改，需要变更时新增版本（例如 `V6__...`）。
 
 ## 配置项（本地凭据不入库）
 
@@ -156,10 +157,44 @@ npm run dev
 - 会话固定防护：登录成功后废弃旧会话并创建新会话
 - 已知限制：未实现登录失败次数限制（V1 阶段文档未要求，后续可加）
 
+## 阶段 2 已实现（已验收 2026-10-23）
+
+- 用户验收结果：分类查询、创建与重名、编辑与系统分类保护、删除、前端页面均通过；`CATEGORY_IN_USE` 待阶段 3 后端到端复验
+- 分类接口（均需登录）：
+  - `GET /api/v1/categories?type=EXPENSE|INCOME`：返回系统分类与当前用户个人分类，按 `type, sortOrder, id` 排序
+  - `POST /api/v1/categories`：创建个人分类，`{name, type, icon, sortOrder}`，不接收 `userId/isSystem/isActive`
+  - `PUT /api/v1/categories/{id}`：仅可修改 `name/icon/sortOrder`，收支类型不可变
+  - `DELETE /api/v1/categories/{id}`：仅个人分类；被账单引用返回 409 `CATEGORY_IN_USE`
+- 规则：
+  - 同一收支类型内，个人分类不得与当前用户可见的系统分类或个人分类重名 → 409 `CATEGORY_NAME_CONFLICT`
+  - 系统分类不可编辑/删除 → 403 `FORBIDDEN`；他人分类按 404 处理
+  - 分类删除为物理删除，不做级联删除
+- 迁移 `V5__category_management_indexes.sql`：新增 `(type, name)` 查询索引与 `(user_id, type, name)` 唯一索引（系统分类 `user_id` 为 NULL，不受唯一约束影响）
+- 前端 `/categories`：收入/支出切换、系统/个人分类标识、个人分类新增/编辑/删除、删除二次确认、错误提示
+- 已知限制：V1 不提供分类启停接口，`isActive` 始终为 1；`CATEGORY_IN_USE` 的端到端验证依赖阶段 3 的账单接口（当前可手工插入账单数据验证）
+
+## 阶段 3 已实现（已验收 2026-10-23）
+
+- 用户验收结果：新增/编辑、列表与筛选分页、校验、删除、前端页面均通过；验收中修复了负数金额提示顺序问题
+
+- 账单接口（均需登录，所有读写按当前用户隔离）：
+  - `POST /api/v1/transactions`：新增账单，`{type, categoryId, amount, transactionDate, note}`；不接受 `userId`
+  - `GET /api/v1/transactions`：分页 + 筛选，`page`（1 起）、`size`（默认 20、最大 100）、`startDate`、`endDate`（含首尾）、`type`、`categoryId`；默认 `transactionDate DESC, id DESC`
+  - `GET /api/v1/transactions/{id}`：单笔；跨用户或不存在 404
+  - `PUT /api/v1/transactions/{id}`：字段与新增一致，重新校验分类归属/启用/类型
+  - `DELETE /api/v1/transactions/{id}`：仅删除自己的记录
+- 校验：金额 > 0、最多两位小数、适配 `DECIMAL(12,2)`；日期必填、允许未来日期；备注最多 200 字符；`startDate <= endDate`；`size` 最大 100
+- 响应：金额为十进制字符串，日期 `YYYY-MM-DD`，`createdAt` 到秒；列表 `data:{items,page,size,total}`
+- 前端 `/transactions`：
+  - 新增/编辑弹窗：类型、分类（切换类型清空并重载分类）、金额、日期、备注；金额按字符串校验与提交
+  - 列表：日期范围、类型、分类筛选，分页，编辑、删除二次确认；删除当前页最后一条时回上一页
+  - 金额展示使用字符串千分位格式化，不做浮点计算
+- 阶段 2 的 `CATEGORY_IN_USE` 现在可以端到端验证：创建账单后尝试删除其个人分类，预期 409
+
 ## 尚未实现（后续阶段）
 
-分类管理、账单增删改查、首页统计与图表、联调与问题记录。
-除认证接口外的业务页面仍显示“功能尚未接通”，不展示任何模拟数据。
+首页统计与图表、联调与问题记录。
+首页仍显示“功能尚未接通”，不展示任何模拟数据。
 
 ## 代码注释约定
 
