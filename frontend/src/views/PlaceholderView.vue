@@ -13,7 +13,7 @@ const title = computed(() => (typeof route.meta.title === 'string' ? route.meta.
       <h1 class="placeholder__title">{{ title }}</h1>
       <p class="placeholder__status">功能尚未接通</p>
       <p class="placeholder__hint">
-        当前为阶段 0（工程骨架），该页面尚未接入真实接口，因此不展示任何数据。
+        登录与访问控制已完成（阶段 1）；该业务页面尚未接入真实接口，因此不展示任何数据。
       </p>
       <p class="placeholder__hint">后续阶段会替换为真实页面与接口调用。</p>
     </div>

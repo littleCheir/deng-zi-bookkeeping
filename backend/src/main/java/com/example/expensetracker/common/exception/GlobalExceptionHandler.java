@@ -39,6 +39,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ex.getStatus()).body(ApiResponse.failure(error));
     }
 
+    /**
+     * 字段校验失败：details 按字段名聚合，前端只依赖合同字段 code/message，不依赖内部结构。
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         Map<String, Object> details = new LinkedHashMap<>();
@@ -72,6 +75,9 @@ public class GlobalExceptionHandler {
         return badRequest("请求参数类型不正确", Map.of("parameter", String.valueOf(ex.getName())));
     }
 
+    /**
+     * Spring MVC 未匹配到路由/静态资源时抛出，统一成合同的 404 结构，避免默认错误页泄漏信息。
+     */
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
     public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -98,6 +104,9 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure("INTERNAL_ERROR", "服务器内部错误"));
     }
 
+    /**
+     * 校验类错误统一 400 VALIDATION_ERROR；details 至少为空对象，保证前端解析稳定。
+     */
     private ResponseEntity<ApiResponse<Void>> badRequest(String message, Map<String, Object> details) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.failure(new ApiError("VALIDATION_ERROR", message, details)));

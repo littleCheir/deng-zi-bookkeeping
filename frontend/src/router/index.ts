@@ -1,28 +1,41 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import AppLayout from '@/layouts/AppLayout.vue'
+import LoginView from '@/views/LoginView.vue'
 import PlaceholderView from '@/views/PlaceholderView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
+import { useAuthStore } from '@/stores/auth'
 
-// 阶段 0 只建立路由骨架：所有业务页面统一指向 PlaceholderView，
-// 并明确提示“功能尚未接通”，不使用任何模拟数据。
-// 后续阶段会把对应路由替换为真实页面，并加入认证守卫。
 const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { title: '登录' }
+  },
+  {
     path: '/',
-    name: 'dashboard',
-    component: PlaceholderView,
-    meta: { title: '首页' }
-  },
-  {
-    path: '/transactions',
-    name: 'transactions',
-    component: PlaceholderView,
-    meta: { title: '账单' }
-  },
-  {
-    path: '/categories',
-    name: 'categories',
-    component: PlaceholderView,
-    meta: { title: '分类管理' }
+    component: AppLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'dashboard',
+        component: PlaceholderView,
+        meta: { title: '首页', requiresAuth: true }
+      },
+      {
+        path: 'transactions',
+        name: 'transactions',
+        component: PlaceholderView,
+        meta: { title: '账单', requiresAuth: true }
+      },
+      {
+        path: 'categories',
+        name: 'categories',
+        component: PlaceholderView,
+        meta: { title: '分类管理', requiresAuth: true }
+      }
+    ]
   },
   {
     path: '/:pathMatch(.*)*',
@@ -36,6 +49,32 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 })
+})
+
+// 登录态以服务端 /auth/me 为准：首次导航先恢复会话，再决定是否放行。
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+
+  // 刷新页面时先向服务端恢复会话，避免把已登录用户误判为未登录
+  if (!auth.initialized) {
+    await auth.fetchCurrentUser()
+  }
+
+  const requiresAuth = Boolean(to.meta.requiresAuth)
+  if (requiresAuth && !auth.isAuthenticated) {
+    // 记录原始路径，登录成功后回到用户本来想访问的页面
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath }
+    }
+  }
+
+  // 已登录用户访问登录页没有意义，直接回首页
+  if (to.name === 'login' && auth.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  return true
 })
 
 router.afterEach((to) => {

@@ -3,8 +3,8 @@
 个人使用的轻量级记账网站：手机浏览器优先，记录收入/支出，首页查看收支汇总与图表。
 V1 只初始化一个所有者账号，不开放注册；数据模型从一开始按“每条业务数据归属一个用户”设计。
 
-> 当前进度：**阶段 0 —— 项目初始化与开发环境（工程骨架已完成，等待用户手动验收）**。
-> 阶段 1–5 尚未实现。
+> 当前进度：**阶段 1 —— 用户认证与访问控制（已验收 2026-10-23）**。
+> 阶段 2–5 尚未实现。
 
 ## 目录结构
 
@@ -47,15 +47,50 @@ CREATE DATABASE expense_tracker
 
 已执行过的迁移文件不要再修改，需要变更时新增版本（例如 `V5__...`）。
 
-## 配置项（全部通过环境变量，仓库内不含任何真实凭据）
+## 配置项（本地凭据不入库）
 
-`backend/src/main/resources/application.yml` 中的敏感配置留空，由运行环境提供：
+### 推荐方式：`application-local.yml`
+
+数据库连接信息放在 `backend/src/main/resources/application-local.yml`。该文件含真实凭据，已被 `.gitignore` 中的 `*-local.yml` 忽略，**不要提交到 Git**。内容示例（把值换成你自己的）：
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/expense_tracker?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: 你的数据库账号
+    password: 你的数据库密码
+app:
+  initial-owner:
+    # 首次启动且该用户名不存在时创建；已存在则不会重置密码
+    username: 你的登录用户名
+    password: 你的登录密码
+```
+
+启动时激活 `local` profile（任选一种）：
+
+```powershell
+# 方式一：环境变量
+$env:SPRING_PROFILES_ACTIVE = "local"
+cd backend
+mvn spring-boot:run
+
+# 方式二：Maven 参数
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+在 IDEA 中运行时，把 Run/Debug Configuration 的 `Active profiles` 填为 `local`。
+
+`application.yml` 只保留 `${SPRING_DATASOURCE_*:}` 占位，`application-local.yml` 会覆盖它；生产环境请用环境变量或服务器外部配置，不要把凭据写进仓库。
+
+### 可选：环境变量
 
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | 空 | 例：`jdbc:mysql://localhost:3306/expense_tracker?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true` |
+| `SPRING_DATASOURCE_URL` | 空 | 不建 `application-local.yml` 时可改用此变量，例：`jdbc:mysql://localhost:3306/expense_tracker?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true` |
 | `SPRING_DATASOURCE_USERNAME` | 空 | MySQL 账号 |
 | `SPRING_DATASOURCE_PASSWORD` | 空 | MySQL 密码，**不要**写入 `application.yml` 或提交到 Git |
+| `SPRING_PROFILES_ACTIVE` | 空 | 设为 `local` 时加载 `application-local.yml` |
 | `SERVER_PORT` | `8080` | 后端端口 |
 | `APP_INITIAL_OWNER_USERNAME` | 空 | 初始所有者用户名（阶段 1 使用） |
 | `APP_INITIAL_OWNER_PASSWORD` | 空 | 初始所有者密码（阶段 1 使用，只存 BCrypt 哈希） |
@@ -72,9 +107,11 @@ CREATE DATABASE expense_tracker
 
 ```powershell
 cd backend
-mvn spring-boot:run
+# 激活 local profile，加载 application-local.yml 中的数据库连接
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
+- 也可先设置 `$env:SPRING_PROFILES_ACTIVE = "local"` 再执行 `mvn spring-boot:run`。
 - 首次启动会执行 Flyway 迁移；数据库连接信息未配置时启动会失败，这是预期行为。
 - 健康检查：`GET http://localhost:8080/actuator/health`
 - 修改端口：设置环境变量 `SERVER_PORT` 后再启动。
@@ -91,8 +128,9 @@ npm run dev
 - 手机与电脑在同一局域网时，可用 `http://<电脑IP>:5173` 访问；`/api` 会代理到 `VITE_PROXY_TARGET`。
 - 构建静态资源：`npm run build`（输出到 `frontend/dist/`）。
 
-## 阶段 0 已实现
+## 阶段 0 已实现（已验收 2026-10-22）
 
+- 用户验收结果：前后端可调通，后端 `/actuator/health` 返回 `UP`；数据库连接信息配置在 `application-local.yml`
 - 后端 Maven 工程、应用入口、分层目录
 - 统一响应 `{data, error}`、错误体 `{code, message, details}`、全局异常映射
 - MyBatis-Plus 基础配置（分页插件、下划线转驼峰、XML 目录）
@@ -102,10 +140,33 @@ npm run dev
 - Actuator 健康检查（仅暴露 `health`）
 - 前端 Vite + TypeScript 工程、路由骨架、应用壳、样式 token、Axios 实例骨架、占位页与 404 页
 
+## 阶段 1 已实现（已验收 2026-10-23）
+
+- 用户验收结果：认证、CSRF、登录页与路由守卫均通过；验收中修复了 `CsrfConfigurer.accessDeniedHandler` 编译问题
+- 后端认证：服务端 Session + HttpOnly Cookie（有效期 7 天，`SameSite=Lax`），生产 HTTPS 时把 `SESSION_COOKIE_SECURE=true`
+- CSRF：Cookie 名 `XSRF-TOKEN`（非 HttpOnly），请求头 `X-XSRF-TOKEN`；写请求必须携带
+- 接口：
+  - `GET /api/v1/auth/csrf`（匿名）：下发 CSRF Cookie，返回 `{headerName, parameterName}`
+  - `POST /api/v1/auth/login`（匿名）：`{username, password}` → `{id, username}`
+  - `POST /api/v1/auth/logout`（需登录 + CSRF）：空 JSON `{}`
+  - `GET /api/v1/auth/me`（需登录）：`{id, username}`，未登录 401
+- 初始所有者：只从 `application-local.yml` 的 `app.initial-owner` 或 `APP_INITIAL_OWNER_USERNAME` / `APP_INITIAL_OWNER_PASSWORD` 读取；仅用户名不存在时创建，密码保存 BCrypt 哈希，启动时不重置密码
+- 统一 401/403 JSON：`UNAUTHENTICATED` / `FORBIDDEN`；登录失败统一提示，不泄露用户名是否存在（CSRF 校验失败为 Spring Security 默认 403，前端按状态码提示）
+- 前端：极简 `/login`（仅用户名 + 密码，无注册/找回密码）、Pinia auth store、路由守卫（未登录跳登录页并携带回跳地址）、401 统一清理登录态
+- 会话固定防护：登录成功后废弃旧会话并创建新会话
+- 已知限制：未实现登录失败次数限制（V1 阶段文档未要求，后续可加）
+
 ## 尚未实现（后续阶段）
 
-认证与 CSRF、分类管理、账单增删改查、首页统计与图表、联调与问题记录。
-当前页面统一显示“功能尚未接通”，不展示任何模拟数据。
+分类管理、账单增删改查、首页统计与图表、联调与问题记录。
+除认证接口外的业务页面仍显示“功能尚未接通”，不展示任何模拟数据。
+
+## 代码注释约定
+
+- 关键类与关键方法使用中文注释说明职责、约束与安全语义。
+- 关键逻辑必须写“为什么”，包括认证与 CSRF、会话与权限、用户隔离、金额精度、日期边界、统计口径、异常映射、前端请求封装与路由守卫。
+- 不做逐行复述；简单访问器与 Lombok 生成代码不写冗余注释。
+- 每个阶段的交付文档会列出本轮补充的关键注释点。
 
 ## 手动验收与交付记录
 

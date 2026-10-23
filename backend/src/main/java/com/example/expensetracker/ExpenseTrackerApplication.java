@@ -2,11 +2,13 @@ package com.example.expensetracker;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * 个人记账 Web 应用（V1.1）后端入口。
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class ExpenseTrackerApplication {
 
     public static void main(String[] args) {
