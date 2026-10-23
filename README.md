@@ -3,8 +3,8 @@
 个人使用的轻量级记账网站：手机浏览器优先，记录收入/支出，首页查看收支汇总与图表。
 V1 只初始化一个所有者账号，不开放注册；数据模型从一开始按“每条业务数据归属一个用户”设计。
 
-> 当前进度：**阶段 3 —— 账单记录 CRUD（已验收 2026-10-23）**。
-> 阶段 4–5 尚未实现。
+> 当前进度：**阶段 4 —— 首页统计与图表（已验收 2026-10-23）**。
+> 阶段 5 尚未实现。
 
 ## 目录结构
 
@@ -176,7 +176,6 @@ npm run dev
 ## 阶段 3 已实现（已验收 2026-10-23）
 
 - 用户验收结果：新增/编辑、列表与筛选分页、校验、删除、前端页面均通过；验收中修复了负数金额提示顺序问题
-
 - 账单接口（均需登录，所有读写按当前用户隔离）：
   - `POST /api/v1/transactions`：新增账单，`{type, categoryId, amount, transactionDate, note}`；不接受 `userId`
   - `GET /api/v1/transactions`：分页 + 筛选，`page`（1 起）、`size`（默认 20、最大 100）、`startDate`、`endDate`（含首尾）、`type`、`categoryId`；默认 `transactionDate DESC, id DESC`
@@ -191,10 +190,25 @@ npm run dev
   - 金额展示使用字符串千分位格式化，不做浮点计算
 - 阶段 2 的 `CATEGORY_IN_USE` 现在可以端到端验证：创建账单后尝试删除其个人分类，预期 409
 
+## 阶段 4 已实现（已验收 2026-10-23）
+
+- 用户验收结果：汇总、趋势、分类占比三个接口与首页看板均通过
+- 统计接口（均需登录，严格限定当前用户，日期范围含首尾）：
+  - `GET /api/v1/dashboard/summary`：`{totalIncome,totalExpense,balance,startDate,endDate}`，金额为两位小数字符串，结余允许为负
+  - `GET /api/v1/dashboard/trend?period=day`：`[{date,income,expense}]`，范围内无账单日期补齐 `0.00`
+  - `GET /api/v1/dashboard/expense-by-category`：`[{categoryId,categoryName,amount,percentage}]`，仅支出，总支出为 0 时返回空数组
+- 日期缺省为当前自然月（Asia/Shanghai）；`startDate > endDate` → 400；统计范围上限 3660 天（防御性保护）
+- 前端首页看板 `/`：
+  - 收入/支出/结余三张汇总卡
+  - ECharts 收支趋势柱状图、支出分类饼图；容器尺寸变化自动 resize，组件卸载时 dispose
+  - 月份选择 + 自定义日期范围 + 「回到本月」
+  - 最近 10 条账单；“查看全部”跳转 `/transactions`
+  - 四个模块独立 loading/error/重试，无数据时显示空状态，不使用假数据
+
 ## 尚未实现（后续阶段）
 
-首页统计与图表、联调与问题记录。
-首页仍显示“功能尚未接通”，不展示任何模拟数据。
+联调、手动验收与问题记录（阶段 5）。
+所有业务页面已完成，阶段 5 将进行全链路联调与问题修复。
 
 ## 代码注释约定
 
