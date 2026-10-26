@@ -1,0 +1,43 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '要部署的 commit SHA / 分支 / tag（留空则部署 main）'
+        required: false
+        default: 'main'
+
+concurrency:
+  group: manual-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: SSH 部署
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.REMOTE_PATH }}
+
+            echo "=== 切到目标版本 ==="
+            git fetch origin
+            git reset --hard "${{ inputs.ref }}"
+
+            echo "=== 构建并启动 ==="
+            docker compose up -d --build
+
+            echo "=== 健康检查 ==="
+            sleep 8
+            curl -f http://127.0.0.1:80/ || curl -f http://127.0.0.1:8080/ || true
+            docker compose ps
+
+            echo "=== 清理悬空镜像 ==="
+            docker image prune -f
