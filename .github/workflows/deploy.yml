@@ -36,7 +36,6 @@ jobs:
 
             echo "=== 健康检查 ==="
             sleep 8
-            curl -f http://127.0.0.1:80/ || curl -f http://127.0.0.1:8080/ || true
             docker compose ps
 
             echo "=== 清理悬空镜像 ==="
