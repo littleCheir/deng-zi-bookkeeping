@@ -1,6 +1,7 @@
 services:
   mysql:
-    image: mysql:8.0
+    # 与服务器上已有的 mysql 镜像版本保持一致；本地没有该 tag 时 compose 会尝试拉取
+    image: mysql:8.4.11
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: "${MYSQL_DATABASE:-expense_tracker}"

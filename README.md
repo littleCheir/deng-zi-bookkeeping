@@ -227,7 +227,7 @@ npm run dev
 - `backend/Dockerfile`：Maven 构建 + JRE 运行，非 root
 - `frontend/Dockerfile`：Node 构建 + Nginx 托管
 - `frontend/nginx.conf`：SPA 回退 + `/api` 反向代理
-- `docker-compose.yml`：MySQL 8 + 后端 + Web
+- `docker-compose.yml`：MySQL 8.4.11 + 后端 + Web
 - `.env.example`：环境变量模板（复制为 `.env`）
 
 ### 1. 前置条件
@@ -236,6 +236,7 @@ npm run dev
 - 服务器可访问 Docker Hub、Maven Central、npm registry
 - 开放 `WEB_PORT`（默认 80）；MySQL 不对宿主机暴露端口
 - 宿主机不需要安装 Java、Node、MySQL
+- Compose 会启动独立的 MySQL 容器（`mysql:8.4.11`，服务名 `mysql`），不会复用宿主机上已有的 3306 端口 MySQL 容器；两者数据互不影响。若要复用现有 MySQL，需要额外配置 Docker 网络、账号与库权限。
 
 ### 2. 配置
 
