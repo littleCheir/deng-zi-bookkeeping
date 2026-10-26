@@ -135,7 +135,15 @@ public class TransactionService {
         entity.setNote(normalizeNote(request.note()));
         entity.setUpdatedAt(LocalDateTime.now(BUSINESS_ZONE).withNano(0));
 
-        transactionMapper.updateById(entity);
+        // UPDATE 条件同时限定 id 与 user_id，满足合同的用户隔离要求
+        int updated = transactionMapper.update(entity, Wrappers.<TransactionEntity>lambdaUpdate()
+                .eq(TransactionEntity::getId, id)
+                .eq(TransactionEntity::getUserId, userId));
+        if (updated == 0) {
+            // 0 行可能是记录被并发删除，也可能是驱动开启 useAffectedRows 后“值未变化”；
+            // 再查一次归属，真正不存在才返回 404。
+            requireOwnedTransaction(id, userId);
+        }
         return toResponse(entity, category.getName());
     }
 

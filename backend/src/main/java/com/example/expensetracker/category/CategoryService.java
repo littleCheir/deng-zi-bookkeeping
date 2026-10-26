@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -86,7 +87,12 @@ public class CategoryService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
 
-        categoryMapper.insert(entity);
+        try {
+            categoryMapper.insert(entity);
+        } catch (DuplicateKeyException ex) {
+            // 并发创建同名个人分类时由 (user_id,type,name) 唯一索引兜底，转成合同里的 409
+            throw nameConflict();
+        }
         return toResponse(entity);
     }
 
@@ -105,7 +111,21 @@ public class CategoryService {
         entity.setIcon(icon);
         entity.setSortOrder(request.sortOrder() == null ? 0 : request.sortOrder());
         entity.setUpdatedAt(LocalDateTime.now(BUSINESS_ZONE));
-        categoryMapper.updateById(entity);
+
+        int updated;
+        try {
+            // UPDATE 条件同时限定 id 与 user_id，避免只按主键写入
+            updated = categoryMapper.update(entity, Wrappers.<CategoryEntity>lambdaUpdate()
+                    .eq(CategoryEntity::getId, id)
+                    .eq(CategoryEntity::getUserId, userId));
+        } catch (DuplicateKeyException ex) {
+            throw nameConflict();
+        }
+        if (updated == 0) {
+            // 0 行可能是记录被并发删除，也可能是驱动开启 useAffectedRows 后“值未变化”；
+            // 再查一次归属，真正不存在才返回 404。
+            requireOwnedCategory(id, userId);
+        }
         return toResponse(entity);
     }
 
@@ -122,7 +142,13 @@ public class CategoryService {
         if (referenced != null && referenced > 0) {
             throw new BusinessException(HttpStatus.CONFLICT, "CATEGORY_IN_USE", "该分类已被账单使用，无法删除");
         }
-        categoryMapper.deleteById(id);
+        // DELETE 条件同样限定 user_id，避免只按主键删除
+        int deleted = categoryMapper.delete(Wrappers.<CategoryEntity>lambdaQuery()
+                .eq(CategoryEntity::getId, id)
+                .eq(CategoryEntity::getUserId, userId));
+        if (deleted == 0) {
+            throw categoryNotFound();
+        }
     }
 
     /**
@@ -131,13 +157,14 @@ public class CategoryService {
     private CategoryEntity requireOwnedCategory(Long id, Long userId) {
         CategoryEntity entity = categoryMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "NOT_FOUND", "分类不存在");
+            throw categoryNotFound();
         }
         if (entity.getUserId() == null) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "FORBIDDEN", "系统分类不可编辑或删除");
         }
         if (!entity.getUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "NOT_FOUND", "分类不存在");
+            // 他人分类按不存在处理，避免泄露存在性
+            throw categoryNotFound();
         }
         return entity;
     }
@@ -156,8 +183,17 @@ public class CategoryService {
                         .eq(CategoryEntity::getUserId, userId))
                 .ne(excludeId != null, CategoryEntity::getId, excludeId));
         if (count != null && count > 0) {
-            throw new BusinessException(HttpStatus.CONFLICT, "CATEGORY_NAME_CONFLICT", "同一收支类型下已存在同名分类");
+            throw nameConflict();
         }
+    }
+
+    private BusinessException nameConflict() {
+        return new BusinessException(HttpStatus.CONFLICT, "CATEGORY_NAME_CONFLICT",
+                "同一收支类型下已存在同名分类");
+    }
+
+    private BusinessException categoryNotFound() {
+        return new BusinessException(HttpStatus.NOT_FOUND, "NOT_FOUND", "分类不存在");
     }
 
     private TransactionType parseType(String typeParam) {
