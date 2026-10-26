@@ -9,10 +9,12 @@ V1 只初始化一个所有者账号，不开放注册；数据模型从一开�
 ## 目录结构
 
 ```text
-backend/    Spring Boot 3.3 + MyBatis-Plus + Flyway 后端
-frontend/   Vue 3 + TypeScript + Vite 前端
-docs/       设计文档、12 份阶段文档、阶段交付记录
-README.md   本文件
+backend/            Spring Boot 3.3 + MyBatis-Plus + Flyway 后端（含 Dockerfile）
+frontend/           Vue 3 + TypeScript + Vite 前端（含 Dockerfile、nginx.conf）
+docs/               设计文档、12 份阶段文档、阶段交付记录
+docker-compose.yml  MySQL + 后端 + Web 编排
+.env.example        Docker 部署环境变量模板（复制为 .env）
+README.md           本文件
 ```
 
 ## 技术栈
@@ -208,7 +210,8 @@ npm run dev
 ## V1 状态 (2026.10.26 完成)
 
 - 认证与访问控制、分类管理、账单 CRUD、首页统计与图表均已实现并逐阶段验收
-- 部署（Nginx/HTTPS/systemd）与数据库备份恢复不在阶段文档范围
+- 已提供 Docker Compose 部署（MySQL + 后端 + Nginx 前端），见下节
+- HTTPS 终结、服务器防火墙与数据库备份恢复需按实际部署环境配置
 
 ## 代码注释约定
 
@@ -216,3 +219,76 @@ npm run dev
 - 关键逻辑必须写“为什么”，包括认证与 CSRF、会话与权限、用户隔离、金额精度、日期边界、统计口径、异常映射、前端请求封装与路由守卫。
 - 不做逐行复述；简单访问器与 Lombok 生成代码不写冗余注释。
 - 每个阶段的交付文档会列出本轮补充的关键注释点。
+
+## Docker 部署（个人服务器）
+
+仓库包含：
+
+- `backend/Dockerfile`：Maven 构建 + JRE 运行，非 root
+- `frontend/Dockerfile`：Node 构建 + Nginx 托管
+- `frontend/nginx.conf`：SPA 回退 + `/api` 反向代理
+- `docker-compose.yml`：MySQL 8 + 后端 + Web
+- `.env.example`：环境变量模板（复制为 `.env`）
+
+### 1. 前置条件
+
+- Docker Engine 24+ 与 Docker Compose v2
+- 服务器可访问 Docker Hub、Maven Central、npm registry
+- 开放 `WEB_PORT`（默认 80）；MySQL 不对宿主机暴露端口
+- 宿主机不需要安装 Java、Node、MySQL
+
+### 2. 配置
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`，至少修改：
+
+- `MYSQL_PASSWORD`
+- `MYSQL_ROOT_PASSWORD`
+- `APP_INITIAL_OWNER_PASSWORD`
+
+需要时再改 `WEB_PORT`、`SESSION_COOKIE_SECURE`。`.env` 已被 `.gitignore` 忽略；`backend/.dockerignore` 排除了 `application-local.yml`，本地数据库凭据不会打进镜像。
+
+如果密码包含 `$`、`#`、空格等字符，请在 `.env` 中用双引号包裹。前端镜像使用 `npm ci`，请确保 `frontend/package-lock.json` 已提交。
+
+### 3. 启动
+
+```bash
+docker compose up -d --build
+docker compose ps
+docker compose logs -f backend
+```
+
+首次启动：MySQL 初始化数据库 → 后端 Flyway 建表 → 创建初始所有者账号。
+访问 `http://<服务器IP>:<WEB_PORT>`（默认 80）。
+
+### 4. 更新
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+数据在 `mysql-data` volume 中，重建容器不会丢失。
+
+### 5. 常用运维
+
+```bash
+# 停止 / 启动
+docker compose down
+docker compose up -d
+
+# 删除容器同时删除数据库数据（危险）
+docker compose down -v
+
+# 备份
+docker compose exec -T mysql sh -c 'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' > backup.sql
+
+# 恢复
+docker compose exec -T mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < backup.sql
+
+# 健康检查（把 <WEB_PORT> 换成 .env 中的端口，默认 80）
+curl -fsS http://127.0.0.1:<WEB_PORT>/actuator/health
+```

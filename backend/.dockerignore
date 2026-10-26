@@ -1,0 +1,7 @@
+# 构建产物与本地配置不进入构建上下文
+target/
+.idea/
+*.iml
+
+# 本地数据库凭据绝不能打进镜像
+src/main/resources/application-local.yml
