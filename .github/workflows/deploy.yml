@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: '要部署的 commit SHA / 分支 / tag（留空则部署 main）'
+        description: '要部署的 commit SHA / 分支 / tag（留空则部署 master）'
         required: false
-        default: 'main'
+        default: 'master'
 
 concurrency:
   group: manual-deploy
