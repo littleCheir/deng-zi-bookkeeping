@@ -93,7 +93,7 @@ async function loadCategories(type: TransactionType): Promise<void> {
 }
 
 /** 切换收支类型必须清空已选分类，并重新加载对应类型的分类。 */
-function onTypeChange(value: string | number | boolean): void {
+function onTypeChange(value: string | number | boolean | undefined): void {
   const next: TransactionType = value === 'INCOME' ? 'INCOME' : 'EXPENSE'
   if (next === form.type) {
     return

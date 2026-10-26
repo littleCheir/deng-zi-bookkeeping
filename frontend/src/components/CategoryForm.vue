@@ -45,8 +45,8 @@ function onVisibleChange(value: boolean): void {
   emit('update:modelValue', value)
 }
 
-/** el-radio-group 的 change 事件类型是宽泛的 string | number | boolean，这里收敛为事务类型。 */
-function onFormTypeChange(value: string | number | boolean): void {
+/** el-radio-group 的 change 事件类型是 string | number | boolean | undefined，这里收敛为事务类型。 */
+function onFormTypeChange(value: string | number | boolean | undefined): void {
   form.type = value === 'INCOME' ? 'INCOME' : 'EXPENSE'
 }
 

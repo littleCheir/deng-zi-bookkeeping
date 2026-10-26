@@ -34,8 +34,8 @@ async function loadCategories(): Promise<void> {
 onMounted(loadCategories)
 watch(activeType, loadCategories)
 
-/** el-radio-group 的 change 值类型较宽，这里收敛为 TransactionType。 */
-function onTypeChange(value: string | number | boolean): void {
+/** el-radio-group 的 change 值类型为 string | number | boolean | undefined，这里收敛为 TransactionType。 */
+function onTypeChange(value: string | number | boolean | undefined): void {
   activeType.value = value === 'INCOME' ? 'INCOME' : 'EXPENSE'
 }
 
