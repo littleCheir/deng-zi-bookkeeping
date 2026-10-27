@@ -10,6 +10,7 @@ import TrendBarChart from '@/components/TrendBarChart.vue'
 import ExpenseCategoryChart from '@/components/ExpenseCategoryChart.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import TransactionForm from '@/components/TransactionForm.vue'
 import { useDateRange } from '@/composables/useDateRange'
 import type { DashboardSummary, ExpenseByCategory, TrendPoint } from '@/types/dashboard'
 import type { Transaction } from '@/types/transaction'
@@ -34,6 +35,9 @@ const expenseError = ref('')
 const recent = ref<Transaction[]>([])
 const recentLoading = ref(false)
 const recentError = ref('')
+
+// 首页快捷记账：复用账单页的 TransactionForm 弹窗
+const formVisible = ref(false)
 
 function messageOf(error: unknown, fallback: string): string {
   return error instanceof ApiClientError ? error.message : fallback
@@ -132,6 +136,15 @@ function onCustomRangeChange(value: unknown): void {
 function onResetRange(): void {
   resetToCurrentMonth()
 }
+
+function openCreateTransaction(): void {
+  formVisible.value = true
+}
+
+/** 新增成功后刷新汇总、趋势、分类与最近记录 */
+async function onTransactionSaved(): Promise<void> {
+  await loadAll()
+}
 </script>
 
 <template>
@@ -160,7 +173,10 @@ function onResetRange(): void {
         />
         <el-button text @click="onResetRange">回到本月</el-button>
       </div>
-      <span class="dashboard-range-label">{{ range.startDate }} ~ {{ range.endDate }}</span>
+      <div class="dashboard-toolbar__right">
+        <span class="dashboard-range-label">{{ range.startDate }} ~ {{ range.endDate }}</span>
+        <el-button type="primary" @click="openCreateTransaction">新增账单</el-button>
+      </div>
     </div>
 
     <div class="summary-grid">
@@ -224,6 +240,14 @@ function onResetRange(): void {
         </li>
       </ul>
     </div>
+
+    <TransactionForm
+      v-model="formVisible"
+      :mode="'create'"
+      :transaction="null"
+      :default-type="'EXPENSE'"
+      @saved="onTransactionSaved"
+    />
   </section>
 </template>
 
@@ -259,6 +283,13 @@ function onResetRange(): void {
 .dashboard-range-label {
   color: var(--color-text-tertiary);
   font-size: 12px;
+}
+
+.dashboard-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
 }
 
 .summary-grid {
@@ -373,6 +404,12 @@ function onResetRange(): void {
   .dashboard-month,
   .dashboard-range {
     width: 100%;
+  }
+
+  .dashboard-toolbar__right {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
   }
 }
 </style>
