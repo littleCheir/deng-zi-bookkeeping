@@ -29,7 +29,7 @@ jobs:
 
             echo "=== 切到目标版本 ==="
             git fetch origin
-            git reset --hard "${{ inputs.ref }}"
+            git checkout -f -B master origin/master
 
             echo "=== 构建并启动 ==="
             docker compose up -d --build
