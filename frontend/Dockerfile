@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # 前端构建阶段：Node 构建静态资源
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 

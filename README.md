@@ -1,4 +1,4 @@
-# 个人记账 Web 应用（V1.1）
+# 凳子记账 Web 应用（V1.1）
 
 个人使用的轻量级记账网站：手机浏览器优先，记录收入/支出，首页查看收支汇总与图表。
 V1 只初始化一个所有者账号，不开放注册；数据模型从一开始按“每条业务数据归属一个用户”设计。
@@ -213,6 +213,20 @@ npm run dev
 - 认证与访问控制、分类管理、账单 CRUD、首页统计与图表均已实现并逐阶段验收
 - 已提供 Docker Compose 部署（MySQL + 后端 + Nginx 前端），见下节
 - HTTPS 终结、服务器防火墙与数据库备份恢复需按实际部署环境配置
+
+## PWA（V2，已验收 2026-10-30）
+
+- 用户验收结果：安装能力、离线应用外壳、API 不被缓存、更新提示与部署配置均通过
+- 使用 `vite-plugin-pwa` 生成 Manifest 与 Service Worker，HTTPS 下可安装到桌面/主屏幕
+- Manifest 名称「凳子记账」，`display=standalone`，根路径 `/`，图标 192/512/maskable
+- 只预缓存应用静态资源：`index.html`、带哈希的 JS/CSS、图标、manifest
+- `/api/**`、认证/CSRF、所有非 GET 请求绕过 Service Worker，不缓存、不排队、不重放
+- SPA 导航离线回退到缓存的 `index.html`；离线启动仍进入登录页，不缓存用户身份
+- 全局离线横幅 + 新版本「刷新 / 稍后」提示，不强制刷新
+- 构建前需执行 `cd frontend && npm install` 更新 `package-lock.json`（AI 不运行安装命令）
+- 前端 Docker 构建镜像为 `node:22-alpine`；生产必须 HTTPS（当前 `https://bk.littlechair.icu/`）
+- `npm run dev` 不生成 manifest/SW（`devOptions.enabled=false`），不要用它检查安装能力；本地验收请用 `npm run build && npm run preview`（`localhost:4173`，已配置 `/api` 代理）或 Docker
+- 验收记录见 `docs/V2/PWA交付记录.md`
 
 ## 代码注释约定
 

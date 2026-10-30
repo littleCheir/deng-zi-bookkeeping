@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * 个人记账 Web 应用（V1.1）后端入口。
+ * 凳子记账 Web 应用（V1.1）后端入口。
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

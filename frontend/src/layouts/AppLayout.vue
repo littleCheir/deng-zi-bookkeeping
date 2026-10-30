@@ -22,7 +22,7 @@ async function onLogout(): Promise<void> {
   <div class="app-shell">
     <header class="app-header">
       <div class="app-header__inner">
-        <RouterLink class="brand" to="/">个人记账</RouterLink>
+        <RouterLink class="brand" to="/">凳子记账</RouterLink>
         <nav class="nav" aria-label="主导航">
           <RouterLink class="nav__link" to="/">首页</RouterLink>
           <RouterLink class="nav__link" to="/transactions">账单</RouterLink>

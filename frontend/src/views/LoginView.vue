@@ -73,7 +73,7 @@ async function onSubmit(): Promise<void> {
 <template>
   <section class="login-page">
     <div class="card login-card">
-      <h1 class="login-title">个人记账</h1>
+      <h1 class="login-title">凳子记账</h1>
       <p class="login-subtitle">使用所有者账号登录；V1 不提供注册与找回密码。</p>
 
       <el-form
